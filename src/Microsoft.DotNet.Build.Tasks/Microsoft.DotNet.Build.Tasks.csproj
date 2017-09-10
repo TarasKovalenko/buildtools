@@ -37,6 +37,7 @@
     <Compile Include="GenerateCurrentVersion.cs" />
     <Compile Include="GenerateResourcesCode.cs" />
     <Compile Include="GenerateEncodingTable.cs" />
+    <Compile Include="Helper.cs" />
     <Compile Include="EncryptedConfigNuGetRestore.cs" />
     <Compile Include="GenerateUnencryptedNuGetConfig.cs" />
     <Compile Include="GenFacadesTask.cs" />
@@ -48,6 +49,7 @@
     <Compile Include="InstallPackageFromFile.cs" />
     <Compile Include="LocatePreviousContract.cs" />
     <Compile Include="NormalizePaths.cs" />
+    <Compile Include="NormalizeAssemblyName.cs" />
     <Compile Include="GetDoItemsIntersect.cs" />
     <Compile Include="NugetMsBuildLogger.cs" />
     <Compile Include="NuGetPackageObject.cs" />
