@@ -56,7 +56,6 @@
     <!-- Don't run performance tests in parallel, even in "functional" outerloop runs. -->
     <_XunitOptions Condition="'$(Performance)'!='true' and '$(Outerloop)' == 'true' and '$(IncludePerformanceTests)' == 'true'">$(_XunitOptions) -parallel none</_XunitOptions>
     <_XunitOptions Condition="'$(BuildingUAPAOTVertical)'=='true'">$(_XunitOptions) -redirectoutput</_XunitOptions>
-
     <_XunitOptions>$(_XunitOptions) -notrait category=non$(_bc_TargetGroup)tests</_XunitOptions>
 
     <TargetOS Condition="'$(TargetOS)' == ''">$(DefaultOSGroup)</TargetOS>
@@ -71,6 +70,7 @@
     <_XunitOptions Condition="'$(XunitOptions)' != ''">$(_XunitOptions) $(XunitOptions)</_XunitOptions>
     <_XunitOptions Condition="'$(XunitMethodName)' != ''">$(_XunitOptions) -method $(XunitMethodName)</_XunitOptions>
     <_XunitOptions Condition="'$(XunitClassName)' != ''">$(_XunitOptions) -class $(XunitClassName)</_XunitOptions>
+    <_XunitOptions Condition="'$(XunitShowProgress)' == 'true' and '$(BuildingNETFxVertical)' != 'true'">$(_XunitOptions) -showprogress</_XunitOptions>
     <XunitTestAssembly Condition="'$(XunitTestAssembly)' == ''">$(TargetFileName)</XunitTestAssembly>
     <XunitArguments>$(XunitTestAssembly) $(_XunitOptions)</XunitArguments>
 
@@ -420,6 +420,17 @@ robocopy /S /NP %EXECUTION_DIR%int\%(Identity)\ %EXECUTION_DIR%native\
 
       <!-- Copy the log files and the results files from the Documents folder to the test folder -->
       <PostExecutionTestCommandLines Include="move $(UAP_Results_Path)$(XunitTestAssembly).xml .\$(XunitResultsFileName)" />
+    </ItemGroup>
+
+    <!-- If the PreExecutionTestScript property is set, then it should be set to the full path to a script that will be directly incorporated
+         into the generated runtests script, immediately before the test is run. This can be used to set a number of JIT stress modes,
+         for example. It is intended that this be as late as possible in the generated script, as close as possible to the running of the
+         test. That is why this doesn't appear higher in this file. The idea is that if the included script alters managed code behavior, such as
+         setting various JIT stress modes, we don't want those changes to affect any other managed code invocation (such as test infrastructure
+         written in managed code).
+     -->
+    <ItemGroup Condition="'$(PreExecutionTestScript)'!=''">
+      <TestCommandLines Include="$([System.IO.File]::ReadAllText('$(PreExecutionTestScript)'))" />
     </ItemGroup>
 
     <ItemGroup Condition="'$(Performance)'!='true'">
