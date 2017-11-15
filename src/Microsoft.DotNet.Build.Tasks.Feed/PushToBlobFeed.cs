@@ -2,15 +2,17 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
+using Microsoft.Build.Framework;
+using Microsoft.DotNet.Build.CloudTestTasks;
 using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using MSBuild = Microsoft.Build.Utilities;
-using Microsoft.Build.Framework;
-using System.Collections.Generic;
 
 namespace Microsoft.DotNet.Build.Tasks.Feed
 {
-
     public class PushToBlobFeed : MSBuild.Task
     {
         [Required]
@@ -22,11 +24,13 @@ namespace Microsoft.DotNet.Build.Tasks.Feed
         [Required]
         public ITaskItem[] ItemsToPush { get; set; }
 
-        public string IndexDirectory { get; set; }
+        public bool Overwrite { get; set; }
 
         public bool PublishFlatContainer { get; set; }
 
-        public bool Overwrite { get; set; }
+        public int MaxClients { get; set; } = 8;
+
+        public bool SkipCreateContainer { get; set; } = false;
 
         public override bool Execute()
         {
@@ -38,36 +42,41 @@ namespace Microsoft.DotNet.Build.Tasks.Feed
             try
             {
                 Log.LogMessage(MessageImportance.High, "Performing feed push...");
+
                 if (ItemsToPush == null)
                 {
                     Log.LogError($"No items to push. Please check ItemGroup ItemsToPush.");
                 }
-                BlobFeedAction blobFeedAction = new BlobFeedAction(ExpectedFeedUrl, AccountKey, IndexDirectory, Log);
-                bool containerExists = await blobFeedAction.feed.CheckIfFeedExists();
-                if (!containerExists)
+                else
                 {
-                    await blobFeedAction.feed.CreateFeedContainer();
-                }
-                if (!PublishFlatContainer)
-                {
-                    if (!containerExists)
+                    BlobFeedAction blobFeedAction = new BlobFeedAction(ExpectedFeedUrl, AccountKey, Log);
+
+                    if (!SkipCreateContainer)
                     {
-                        await blobFeedAction.PushToFeed(ConvertToStringLists(ItemsToPush));
+                        await blobFeedAction.CreateContainerAsync(this.BuildEngine);
+                    }
+
+                    List<string> items = ConvertToStringLists(ItemsToPush);
+
+                    if (!PublishFlatContainer)
+                    {
+                        await blobFeedAction.PushToFeed(items, Overwrite);
                     }
                     else
                     {
-                        await blobFeedAction.PushToFeed(ConvertToStringLists(ItemsToPush), Overwrite);
+                        using (var clientThrottle = new SemaphoreSlim(this.MaxClients, this.MaxClients))
+                        {
+                            Log.LogMessage($"Uploading {ItemsToPush.Length} items...");
+                            await Task.WhenAll(ItemsToPush.Select(item => blobFeedAction.UploadAssets(item, clientThrottle, Overwrite)));
+                        }
                     }
-                }
-                else
-                {
-                    await blobFeedAction.PushToFeedFlat(ConvertToStringLists(ItemsToPush), Overwrite);
                 }
             }
             catch (Exception e)
             {
                 Log.LogErrorFromException(e, true);
             }
+
             return !Log.HasLoggedErrors;
         }
 
@@ -78,6 +87,7 @@ namespace Microsoft.DotNet.Build.Tasks.Feed
             {
                 stringList.Add(item.ItemSpec);
             }
+
             return stringList;
         }
     }

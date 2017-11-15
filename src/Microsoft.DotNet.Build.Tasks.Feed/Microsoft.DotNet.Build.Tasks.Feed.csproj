@@ -11,6 +11,7 @@
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
     <ProjectGuid>{6623492E-9EAD-40F0-B8F4-AF0AFBF98890}</ProjectGuid>
     <NuGetTargetMoniker>.NETStandard,Version=v1.5</NuGetTargetMoniker>
+    <CopyNuGetImplementations>true</CopyNuGetImplementations>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
   </PropertyGroup>
@@ -20,18 +21,34 @@
     <StartupObject />
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="..\Microsoft.DotNet.Build.CloudTestTasks\AzureBlobLease.cs" />
-    <Compile Include="..\Microsoft.DotNet.Build.CloudTestTasks\AzureConnectionStringBuildTask.cs" />
-    <Compile Include="..\Microsoft.DotNet.Build.CloudTestTasks\AzureHelper.cs" />
-    <Compile Include="..\Microsoft.DotNet.Build.CloudTestTasks\ListAzureBlobs.cs" />
-    <Compile Include="..\Microsoft.DotNet.Build.CloudTestTasks\UploadClient.cs" />
+    <Compile Include="..\Microsoft.DotNet.Build.CloudTestTasks\AzureBlobLease.cs">
+      <Link>AzureBlobLease.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.DotNet.Build.CloudTestTasks\AzureConnectionStringBuildTask.cs">
+      <Link>AzureConnectionStringBuildTask.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.DotNet.Build.CloudTestTasks\AzureHelper.cs">
+      <Link>AzureHelper.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.DotNet.Build.CloudTestTasks\CreateAzureContainer.cs">
+      <Link>CreateAzureContainer.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.DotNet.Build.CloudTestTasks\UploadClient.cs">
+      <Link>UploadClient.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.DotNet.Build.CloudTestTasks\UploadToAzure.cs">
+      <Link>UploadToAzure.cs</Link>
+    </Compile>
     <Compile Include="BlobFeed.cs" />
     <Compile Include="BlobFeedAction.cs" />
     <Compile Include="ConfigureInputFeed.cs" />
     <Compile Include="PushToBlobFeed.cs" />
+    <Compile Include="SleetLogger.cs" />
+    <Compile Include="SleetSettings.cs" />
+    <Compile Include="SleetSource.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="PackageFiles\**\*.*" />
+    <None Include="PackageFiles\Microsoft.DotNet.Build.Tasks.Feed.targets" />
     <None Include="project.json" />
   </ItemGroup>
   <Import Project="$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildThisFileDirectory), dir.targets))\dir.targets" />

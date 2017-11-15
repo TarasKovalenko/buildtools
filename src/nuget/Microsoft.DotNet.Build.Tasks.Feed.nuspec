@@ -16,7 +16,7 @@
     <copyright>Copyright © Microsoft Corporation</copyright>
     <tags></tags>
     <dependencies>
-     <!-- Do not add any dependencies to this package as we want to install it versionless (i.e. -ExcludeVersion) and we don't want the dependencies to be installed that way -->
+       <!-- Do not add any dependencies to this package as we want to install it versionless (i.e. -ExcludeVersion) and we don't want the dependencies to be installed that way -->
     </dependencies>
   </metadata>
   <files>
