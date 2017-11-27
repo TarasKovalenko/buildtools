@@ -14,6 +14,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using NuGet.Packaging.Core;
 using MSBuild = Microsoft.Build.Utilities;
 using CloudTestTasks = Microsoft.DotNet.Build.CloudTestTasks;
 
@@ -79,12 +80,16 @@ namespace Microsoft.DotNet.Build.Tasks.Feed
         public async Task<bool> PushItemsToFeedAsync(IEnumerable<string> items, bool allowOverwrite)
         {
             Log.LogMessage(MessageImportance.Low, $"START pushing items to feed");
-            Random rnd = new Random();
+
+            if (!items.Any())
+            {
+                Log.LogMessage("No items to push found in the items list.");
+                return true;
+            }
 
             try
             {
-
-                bool result = await PushAsync(items.ToList(), allowOverwrite);
+                bool result = await PushAsync(items, allowOverwrite);
                 return result;
             }
             catch (Exception e)
@@ -95,17 +100,18 @@ namespace Microsoft.DotNet.Build.Tasks.Feed
             return !Log.HasLoggedErrors;
         }
 
-        public async Task UploadAssets(ITaskItem item, SemaphoreSlim clientThrottle, bool allowOverwrite = false)
+        public async Task UploadAssets(ITaskItem item, SemaphoreSlim clientThrottle, int uploadTimeout, bool allowOverwrite = false)
         {
             string relativeBlobPath = item.GetMetadata("RelativeBlobPath");
+
             if (string.IsNullOrEmpty(relativeBlobPath))
             {
                 string fileName = Path.GetFileName(item.ItemSpec);
                 string recursiveDir = item.GetMetadata("RecursiveDir");
-                relativeBlobPath = $"{feed.RelativePath}{recursiveDir}{fileName}";
+                relativeBlobPath = $"{recursiveDir}{fileName}";
             }
 
-            relativeBlobPath = relativeBlobPath.Replace("\\", "/");
+            relativeBlobPath = $"{feed.RelativePath}{relativeBlobPath}".Replace("\\", "/");
 
             Log.LogMessage($"Uploading {relativeBlobPath}");
 
@@ -130,7 +136,8 @@ namespace Microsoft.DotNet.Build.Tasks.Feed
                         feed.AccountKey,
                         feed.ContainerName,
                         item.ItemSpec,
-                        relativeBlobPath);
+                        relativeBlobPath,
+                        uploadTimeout);
                 }
                 else
                 {
@@ -148,7 +155,7 @@ namespace Microsoft.DotNet.Build.Tasks.Feed
             }
         }
 
-        public async Task CreateContainerAsync(IBuildEngine buildEngine)
+        public async Task CreateContainerAsync(IBuildEngine buildEngine, bool publishFlatContainer)
         {
             Log.LogMessage($"Creating container {feed.ContainerName}...");
 
@@ -166,24 +173,45 @@ namespace Microsoft.DotNet.Build.Tasks.Feed
 
             Log.LogMessage($"Creating container {feed.ContainerName} succeeded!");
 
-            try
+            if (!publishFlatContainer)
             {
-
-                bool result = await InitAsync();
-
-                if (result)
+                try
                 {
-                    Log.LogMessage($"Initializing sub-feed {source.FeedSubPath} succeeded!");
+                    bool result = await InitAsync();
+
+                    if (result)
+                    {
+                        Log.LogMessage($"Initializing sub-feed {source.FeedSubPath} succeeded!");
+                    }
+                    else
+                    {
+                        throw new Exception($"Initializing sub-feed {source.FeedSubPath} failed!");
+                    }
                 }
-                else
+                catch (Exception e)
                 {
-                    throw new Exception($"Initializing sub-feed {source.FeedSubPath} failed!");
+                    Log.LogErrorFromException(e);
                 }
             }
-            catch (Exception e)
+        }
+
+        public async Task<ISet<PackageIdentity>> GetPackageIdentitiesAsync()
+        {
+            var context = new SleetContext
             {
-                Log.LogErrorFromException(e);
-            }
+                LocalSettings = GetSettings(),
+                Log = new SleetLogger(Log),
+                Source = GetAzureFileSystem(),
+                Token = CancellationToken
+            };
+            context.SourceSettings = await FeedSettingsUtility.GetSettingsOrDefault(
+                context.Source,
+                context.Log,
+                context.Token);
+
+            var packageIndex = new PackageIndex(context);
+
+            return await packageIndex.GetPackagesAsync();
         }
 
         private bool IsSanityChecked(IEnumerable<string> items)
@@ -238,15 +266,16 @@ namespace Microsoft.DotNet.Build.Tasks.Feed
         {
             LocalSettings settings = GetSettings();
             AzureFileSystem fileSystem = GetAzureFileSystem();
-            bool result = await PushCommand.RunAsync(settings, fileSystem, items.ToList(), allowOverwrite, false, new SleetLogger(Log));
+            bool result = await PushCommand.RunAsync(settings, fileSystem, items.ToList(), allowOverwrite, skipExisting: false, log: new SleetLogger(Log));
             return result;
         }
 
         private async Task<bool> InitAsync()
         {
+
             LocalSettings settings = GetSettings();
             AzureFileSystem fileSystem = GetAzureFileSystem();
-            bool result = await InitCommand.RunAsync(settings, fileSystem, true, true, new SleetLogger(Log), CancellationToken);
+            bool result = await InitCommand.RunAsync(settings, fileSystem, enableCatalog: false, enableSymbols: false, log: new SleetLogger(Log), token: CancellationToken);
             return result;
         }
     }
