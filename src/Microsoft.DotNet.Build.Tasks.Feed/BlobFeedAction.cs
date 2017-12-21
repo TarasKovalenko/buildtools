@@ -34,6 +34,10 @@ namespace Microsoft.DotNet.Build.Tasks.Feed
 
         public BlobFeedAction(string expectedFeedUrl, string accountKey, MSBuild.TaskLoggingHelper Log)
         {
+            // This blob feed action regex is custom because of the way that nuget handles query strings (it doesn't)
+            // Instead of encoding the query string containing the SAS at the end of the URL we encode it at the beginning.
+            // As a result, we can't parse this feed url like a traditional feed url.  When this changes, this code could be simplified and
+            // BlobUriParser could be used instead.
             this.Log = Log;
             Match m = Regex.Match(expectedFeedUrl, feedRegex);
             if (m.Success)
@@ -114,6 +118,14 @@ namespace Microsoft.DotNet.Build.Tasks.Feed
             string contentType = item.GetMetadata("ContentType");
 
             relativeBlobPath = $"{feed.RelativePath}{relativeBlobPath}".Replace("\\", "/");
+
+            if (relativeBlobPath.Contains("//"))
+            {
+                Log.LogError(
+                    $"Item '{item.ItemSpec}' RelativeBlobPath contains virtual directory " +
+                    $"without name (double forward slash): '{relativeBlobPath}'");
+                return;
+            }
 
             Log.LogMessage($"Uploading {relativeBlobPath}");
 
