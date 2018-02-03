@@ -48,6 +48,7 @@
     <Compile Include="GetTargetMachineInfo.cs" />
     <Compile Include="GetNetCoreAppVersionsFromFile.cs" />
     <Compile Include="InstallPackageFromFile.cs" />
+    <Compile Include="LaunchDebugger.cs" />
     <Compile Include="LocatePreviousContract.cs" />
     <Compile Include="NormalizePaths.cs" />
     <Compile Include="NormalizeAssemblyName.cs" />
@@ -68,6 +69,7 @@
     <Compile Include="SignTypeItem.cs" />
     <Compile Include="UpdatePackageDependencyVersion.cs" />
     <Compile Include="IsRestoreRequired.cs" />
+    <Compile Include="ValidateBinInspectResults.cs" />
     <Compile Include="ValidateExactRestore.cs" />
     <Compile Include="VersionTools\BaseDependenciesTask.cs" />
     <Compile Include="VersionTools\MsBuildTraceListener.cs" />

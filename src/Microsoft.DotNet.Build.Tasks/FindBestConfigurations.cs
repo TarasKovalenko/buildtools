@@ -7,6 +7,7 @@ using Microsoft.Build.Utilities;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System;
 
 namespace Microsoft.DotNet.Build.Tasks
 {
@@ -27,9 +28,10 @@ namespace Microsoft.DotNet.Build.Tasks
         {
             LoadConfiguration();
 
-            var supportedProjectConfigurations = new HashSet<Configuration>(
-                SupportedConfigurations.Where(c => !string.IsNullOrWhiteSpace(c)).Select(c => ConfigurationFactory.ParseConfiguration(c)),
-                Configuration.CompatibleComparer);
+            Dictionary<Configuration, Configuration> supportedProjectConfigurations = SupportedConfigurations.Where(c => !string.IsNullOrWhiteSpace(c))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Select(c => ConfigurationFactory.ParseConfiguration(c))
+                .ToDictionary(c => c, Configuration.CompatibleComparer);
 
             var bestConfigurations = new List<ITaskItem>();
 
@@ -39,7 +41,9 @@ namespace Microsoft.DotNet.Build.Tasks
 
                 var compatibleConfigurations = ConfigurationFactory.GetCompatibleConfigurations(buildConfiguration, DoNotAllowCompatibleValues);
 
-                var bestConfiguration = compatibleConfigurations.FirstOrDefault(c => supportedProjectConfigurations.Contains(c));
+                Configuration supportedProjectConfiguration = null;
+
+                var bestConfiguration = compatibleConfigurations.FirstOrDefault(c => supportedProjectConfigurations.TryGetValue(c, out supportedProjectConfiguration));
 
                 if (bestConfiguration == null)
                 {
@@ -48,6 +52,12 @@ namespace Microsoft.DotNet.Build.Tasks
                 }
                 else
                 {
+                    if (supportedProjectConfiguration.IsPlaceHolderConfiguration)
+                    {
+                        BestConfigurations = Array.Empty<ITaskItem>();
+                        return !Log.HasLoggedErrors;
+                    }
+
                     Log.LogMessage(MessageImportance.Low, $"Chose configuration {bestConfiguration}");
                     var bestConfigurationItem = new TaskItem(bestConfiguration.ToString(), (IDictionary)bestConfiguration.GetProperties());
 

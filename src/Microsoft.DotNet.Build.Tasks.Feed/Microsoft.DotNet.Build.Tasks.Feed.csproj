@@ -42,10 +42,15 @@
     <Compile Include="BlobFeed.cs" />
     <Compile Include="BlobFeedAction.cs" />
     <Compile Include="BlobUrlInfo.cs" />
+    <Compile Include="BuildManifest\FetchOrchestratedBuildManifestInfo.cs" />
+    <Compile Include="BuildManifest\UpdateOrchestratedBuildManifest.cs" />
+    <Compile Include="BuildManifest\PushOrchestratedBuildManifest.cs" />
+    <Compile Include="BuildManifest\WriteOrchestratedBuildManifestSummaryToFile.cs" />
+    <Compile Include="BuildManifest\WriteOrchestratedBuildManifestToFile.cs" />
     <Compile Include="ConfigureInputFeed.cs" />
     <Compile Include="GetBlobFeedPackageList.cs" />
     <Compile Include="CopyBlobDirectory.cs" />
-    <Compile Include="ParseFeedUrl.cs" />
+    <Compile Include="ParseBlobUrl.cs" />
     <Compile Include="PushToBlobFeed.cs" />
     <Compile Include="SleetLogger.cs" />
     <Compile Include="SleetSettings.cs" />
@@ -54,6 +59,12 @@
   <ItemGroup>
     <None Include="PackageFiles\Microsoft.DotNet.Build.Tasks.Feed.targets" />
     <None Include="project.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Microsoft.DotNet.VersionTools$(TargetFrameworkProjectSuffix)\Microsoft.DotNet.VersionTools$(TargetFrameworkProjectSuffix).csproj">
+      <Project>{8d524fa5-a8c5-4ebd-ba8b-2a4fed03ee58}</Project>
+      <Name>Microsoft.DotNet.VersionTools$(TargetFrameworkProjectSuffix)</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildThisFileDirectory), dir.targets))\dir.targets" />
   <Target Name="AfterBuild">

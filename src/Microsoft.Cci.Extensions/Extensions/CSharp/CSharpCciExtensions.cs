@@ -111,6 +111,43 @@ namespace Microsoft.Cci.Extensions.CSharp
             throw new InvalidOperationException("All enums should have a value__ field!");
         }
 
+        public static bool IsOrContainsReferenceType(this ITypeReference type)
+        {
+            Queue<ITypeReference> typesToCheck = new Queue<ITypeReference>();
+            HashSet<ITypeReference> visited = new HashSet<ITypeReference>();
+
+            typesToCheck.Enqueue(type);
+
+            while (typesToCheck.Count != 0)
+            {
+                var typeToCheck = typesToCheck.Dequeue();
+                visited.Add(typeToCheck);
+
+                var resolvedType = typeToCheck.ResolvedType;
+
+                // If it is dummy we cannot really check so assume it does because that is will be the most conservative 
+                if (resolvedType is Dummy)
+                    return true;
+
+                if (resolvedType.IsReferenceType)
+                    return true;
+
+                // ByReference<T> is a special type understood by runtime to hold a ref T.
+                if (resolvedType.AreEquivalent("System.ByReference<T>"))
+                    return true;
+
+                foreach (var field in resolvedType.Fields.Where(f => !f.IsStatic))
+                {
+                    if (!visited.Contains(field.Type))
+                    {
+                        typesToCheck.Enqueue(field.Type);
+                    }
+                }
+            }
+
+            return false;
+        }
+
         public static bool IsConversionOperator(this IMethodDefinition method)
         {
             return (method.IsSpecialName &&
@@ -420,7 +457,7 @@ namespace Microsoft.Cci.Extensions.CSharp
                     if (IsAssembly(baseMethod) && !InSameUnit(baseMethod, method))
                         continue;
 
-                    if (filter != null && !filter.Include(baseMethod))
+                    if (filter != null && !filter.Include(baseMethod.UnWrapMember()))
                         continue;
 
                     // NOTE: Do not check method.IsHiddenBySignature here. C# is *always* hide-by-signature regardless of the metadata flag.
@@ -511,7 +548,7 @@ namespace Microsoft.Cci.Extensions.CSharp
             if (!method.IsStatic)
                 return false;
 
-            return method.Attributes.Any(a => a.Type.AreEquivalent("System.Runtime.CompilerServices.ExtensionAttribute"));
+            return method.Attributes.HasAttributeOfType("System.Runtime.CompilerServices.ExtensionAttribute");
         }
 
         public static bool IsEffectivelySealed(this ITypeDefinition type)
@@ -551,6 +588,21 @@ namespace Microsoft.Cci.Extensions.CSharp
                     return true;
             }
             return false;
+        }
+
+        public static bool HasAttributeOfType(this IEnumerable<ICustomAttribute> attributes, string attributeName)
+        {
+            return attributes.Any(a => a.Type.AreEquivalent(attributeName));
+        }
+
+        public static bool HasIsByRefLikeAttribute(this IEnumerable<ICustomAttribute> attributes)
+        {
+            return attributes.HasAttributeOfType("System.Runtime.CompilerServices.IsByRefLikeAttribute");
+        }
+
+        public static bool HasIsReadOnlyAttribute(this IEnumerable<ICustomAttribute> attributes)
+        {
+            return attributes.HasAttributeOfType("System.Runtime.CompilerServices.IsReadOnlyAttribute");
         }
 
         private static IEnumerable<ITypeReference> GetBaseTypes(this ITypeReference typeRef)
