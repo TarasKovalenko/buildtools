@@ -7,6 +7,7 @@ import time
 import sys
 import subprocess
 import string
+import traceback
 
 def get_timestamp():
   print(time.time())
@@ -14,7 +15,7 @@ def get_timestamp():
 def install_dumpling():
   try:
     if (not os.path.isfile(dumplingPath)):
-      url = "https://dumpling.azurewebsites.net/api/client/dumpling.py"
+      url = "https://dumpling.int-dot.net/api/client/dumpling.py"
       scriptPath = os.path.dirname(os.path.realpath(__file__))
       downloadLocation = scriptPath + "/dumpling.py"
       response = urllib2.urlopen(url)
@@ -27,11 +28,11 @@ def install_dumpling():
 
     subprocess.call([sys.executable, dumplingPath, "install"])
   except urllib2.HTTPError, e:
-    print("Dumpling cannot be installed due to: " + str(e).replace(':', '')) # Remove : to avoid looking like error format
+    print("Dumpling cannot be installed from " + url + " due to: " + str(e).replace(':', '')) # Remove : to avoid looking like error format
   except  urllib2.URLError, e:
-    print(e.reason)
+    print("Dumpling cannot be installed from " + url + " due to: " + str(e.reason))
   except:
-    print("An unexpected error was encountered while installing dumpling.py: " + sys.exc_info()[0])
+    print("An unexpected error was encountered while installing dumpling.py: " + traceback.format_exc())
 
 def ensure_installed():
   if (not os.path.isfile(dumplingPath)):
