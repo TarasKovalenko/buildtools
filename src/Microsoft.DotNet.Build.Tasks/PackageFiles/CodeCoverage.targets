@@ -6,7 +6,7 @@
   -->
   <PropertyGroup>
     <OpenCoverVersion>4.6.519</OpenCoverVersion>
-    <CoverletMsbuildVersion>2.1.1</CoverletMsbuildVersion>
+    <CoverletMsbuildVersion>2.3.0</CoverletMsbuildVersion>
     <ReportGeneratorVersion>3.0.1</ReportGeneratorVersion>
     <CoverallsUploaderVersion>1.4</CoverallsUploaderVersion>
   </PropertyGroup>
@@ -14,7 +14,7 @@
   <!-- Coverage options -->
   <PropertyGroup>
     <CodeCoverageEnabled>false</CodeCoverageEnabled>
-    <CodeCoverageEnabled Condition="'$(SkipTests)' != 'true' and '$(Coverage)' == 'true' and '$(Performance)' != 'true'">true</CodeCoverageEnabled>
+    <CodeCoverageEnabled Condition="'$(SkipTests)' != 'true' and '$(Coverage)' == 'true' and '$(IsPerformanceTestProject)' != 'true'">true</CodeCoverageEnabled>
     <UseCoverlet Condition="'$(Coverage)' == 'true' and ('$(RunningOnUnix)' == 'true' or '$(UseCoverlet)' == 'true')">true</UseCoverlet>
     <CoverageReportDir Condition="'$(CoverageReportDir)' == ''">$(TestWorkingDir)coverage\</CoverageReportDir>
 
@@ -32,7 +32,7 @@
 
     <!-- We need to filter the data to only the assembly being tested. Otherwise we will gather tons of data about other assemblies. -->
     <_ProjectDirectoryUnderSourceDir Condition="'$(IsTestProject)' == 'true'">$(MSBuildProjectDirectory.SubString($(SourceDir.Length)))</_ProjectDirectoryUnderSourceDir>
-    <AssemblyBeingTestedName Condition="'$(IsTestProject)' == 'true'">$(_ProjectDirectoryUnderSourceDir.SubString(0, $(_ProjectDirectoryUnderSourceDir.IndexOfAny("\\/"))))</AssemblyBeingTestedName>
+    <AssemblyBeingTestedName Condition="'$(IsTestProject)' == 'true' and '$(AssemblyBeingTestedName)' == ''">$(_ProjectDirectoryUnderSourceDir.SubString(0, $(_ProjectDirectoryUnderSourceDir.IndexOfAny("\\/"))))</AssemblyBeingTestedName>
 
     <!-- 
       When coverage is enabled, we disallow building projects in parallel. 
@@ -51,8 +51,7 @@
     <CoverletOutputName Condition=" '$(CoverletOutputName)' == '' ">$(MSBuildProjectName).coverlet</CoverletOutputName>
     <CoverletOutput>$([MSBuild]::EnsureTrailingSlash('$(CoverletOutputDirectory)'))$(CoverletOutputName).xml</CoverletOutput>
     <CoverageOutputFilePath>$(CoverletOutput)</CoverageOutputFilePath>
-    <CoverageInputFilter>*.coverlet.xml</CoverageInputFilter>
-    <ExcludeByFile Condition="$(ExcludeByFile) == ''"></ExcludeByFile>
+    <ExcludeByFile Condition="$(ExcludeByFile) == ''">$(SourceDir)Common/src/System/SR.*</ExcludeByFile>
     <Threshold Condition="$(Threshold) == ''">0</Threshold>
     <ThresholdType Condition="$(ThresholdType) == ''">line,branch,method</ThresholdType>
     <CollectCoverage Condition="$(CollectCoverage) == ''">$(CodeCoverageEnabled)</CollectCoverage>
@@ -79,7 +78,8 @@
       <_CodeCoverageAssemblies Include="$(CodeCoverageAssemblies)" Condition="'$(CodeCoverageAssemblies)' != ''" />
     </ItemGroup>
     <PropertyGroup>
-      <CoverageFilter>@(_CodeCoverageAssemblies->'+[%(Identity)]*', ' ')</CoverageFilter>
+      <CoverageFilter Condition="'$(UseCoverlet)'!='true'">@(_CodeCoverageAssemblies->'+[%(Identity)]*', ' ')</CoverageFilter>
+      <CoverageFilter Condition="'$(UseCoverlet)'=='true'">@(_CodeCoverageAssemblies->'[%(Identity)]*', ',')</CoverageFilter>
       <CoverageFilter Condition="'$(CodeCoverageAssemblies)' == 'all'">[*]*</CoverageFilter>
     </PropertyGroup>
   </Target>
@@ -163,17 +163,9 @@
   <!-- *********************************************************************************************** -->
 
   <Target Name="InstrumentModulesAfterBuild" BeforeTargets="GenerateTestExecutionScripts" Condition="'$(UseCoverlet)'=='true'">
-    <ItemGroup>
-      <_AllDlls Include="$(CoverageRuntimeDir)/*.dll"/>
-      <_AllAssemblies Include="@(_AllDlls -> '%(Filename)')" />
-      <_AllAssemblies Remove="@(_CodeCoverageAssemblies)" />
-    </ItemGroup>
-    <PropertyGroup>
-      <CoverletExclusionFilter>@(_AllAssemblies->'[%(Identity)]*', ',')</CoverletExclusionFilter>
-    </PropertyGroup>
     <Coverlet.MSbuild.Tasks.InstrumentationTask
       Condition="'$(CollectCoverage)' == 'true'"
-      Exclude="$(CoverletExclusionFilter)"
+      Include="$(CoverageFilter)"
       ExcludeByFile="$(ExcludeByFile)"
       Path="$(CoverageRuntimeDir)/" />
   </Target>
@@ -184,9 +176,7 @@
     <CoverageOutputFilePath>$(CoverageReportDir)$(MSBuildProjectName).coverage.xml</CoverageOutputFilePath>
     <CoverageOptions>-oldStyle -filter:"{CoverageFilter}" -excludebyfile:"*\Common\src\System\SR.*" -nodefaultfilters -excludebyattribute:*.ExcludeFromCodeCoverage* -skipautoprops -hideskipped:All -threshold:1</CoverageOptions>
     <CoverageCommandLine>$(CoverageOptions) -returntargetcode -register:user -target:$(TestProgram) -output:$(CoverageOutputFilePath)</CoverageCommandLine>
-    <CoverageInputFilter>*.coverage.xml</CoverageInputFilter>
-    <TestHost>$(CoverageHost)</TestHost>
-    <TestCommandLine>$(TestHost) $(CoverageCommandLine) -targetargs:"$(TestArguments) {XunitTraitOptions} -notrait Benchmark=true"</TestCommandLine>
+    <TestCommandLine>$(CoverageHost) $(CoverageCommandLine) -targetargs:"$(TestArguments) {XunitTraitOptions} -notrait Benchmark=true"</TestCommandLine>
   </PropertyGroup>
 
   <!-- Report Generator Properties -->
@@ -196,6 +186,8 @@
     <CoverageReportTool>$(PackagesDir)ReportGenerator\$(ReportGeneratorVersion)\tools\ReportGenerator.exe</CoverageReportTool>
     <CoverageReportTool Condition="'$(RunningOnUnix)' == 'true'">reportgenerator</CoverageReportTool>
     <CoverageReportGeneratorCommandLine>$(CoverageReportTool) $(CoverageReportGeneratorOptions)</CoverageReportGeneratorCommandLine>
+    <CoverageInputFilter>*.coverage.xml</CoverageInputFilter>
+    <CoverageInputFilter Condition="'$(UseCoverlet)'=='true'">*.coverlet.xml</CoverageInputFilter>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(GenerateIndividualCoverageReport)'=='true'">

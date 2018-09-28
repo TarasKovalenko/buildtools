@@ -4,14 +4,14 @@
     <BuildToolsVersioningPropsHasBeenImported>true</BuildToolsVersioningPropsHasBeenImported>
 
     <Company Condition="'$(Company)' == ''">Microsoft Corporation</Company>
-    <Copyright Condition="'$(Copyright)' == ''">%A9 Microsoft Corporation.  All rights reserved.</Copyright>
+    <Copyright Condition="'$(Copyright)' == ''">%A9 Microsoft Corporation. All rights reserved.</Copyright>
     <Description Condition="'$(Description)' == ''">$(AssemblyName)</Description>
     <FileVersion Condition="'$(FileVersion)' == '' and '$(AssemblyFileVersion)' != ''">$(AssemblyFileVersion)</FileVersion>
     <InformationalVersion Condition="'$(InformationalVersion)' == ''">$(AssemblyFileVersion)$(BuiltByString)</InformationalVersion>
     <Product Condition="'$(Product)' == ''">Microsoft%AE .NET Framework</Product>
     <AssemblyTitle Condition="'$(AssemblyTitle)' == ''">$(AssemblyName)</AssemblyTitle>
     <!-- File passed to C# compiler that defines the mapping from source to GIT URL.  Created in versioning.targets --> 
-    <SourceLinkFilePath>$(BaseIntermediateOutputPath)source_link.json</SourceLinkFilePath>
+    <SourceLinkFilePath>$(RootIntermediateOutputPath)source_link.json</SourceLinkFilePath>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(UseSourceLink)' == 'true' AND Exists('$(SourceLinkFilePath)')">
