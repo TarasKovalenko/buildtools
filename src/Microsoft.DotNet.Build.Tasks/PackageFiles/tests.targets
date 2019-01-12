@@ -8,14 +8,6 @@
   <UsingTask TaskName="GetTargetMachineInfo" AssemblyFile="$(BuildToolsTaskDir)Microsoft.DotNet.Build.Tasks.dll"/>
   <UsingTask Condition="'$(BuildingUAPVertical)' == 'true'" TaskName="ExtractResWResourcesFromAssemblies" AssemblyFile="$(BuildToolsTaskDir)Microsoft.DotNet.Build.Tasks.dll"/>
 
-  <!-- used by test projects that need to copy supplemental content to the output directory -->
-  <ItemDefinitionGroup Condition="'$(IsTestProject)' == 'true'">
-    <SupplementalTestData>
-      <DestinationDir />
-      <DestinationName />
-    </SupplementalTestData>
-  </ItemDefinitionGroup>
-
   <PropertyGroup>
     <SkipTestRun Condition="'$(IsTestProject)' != 'true' OR ('$(IsPerformanceTestProject)' == 'true' AND '$(Performance)' == 'false')">true</SkipTestRun>
     <TestDisabled Condition="'$(SkipTests)'=='true'">true</TestDisabled>
@@ -199,6 +191,11 @@
     <ItemGroup Condition="'$(IsPerformanceTestProject)' == 'true'">
       <ReferenceFromRuntime Include="xunit.performance.api" />
       <ReferenceFromRuntime Include="xunit.performance.core" />
+    </ItemGroup>
+    
+    <ItemGroup Condition="'$(IsBenchmarkDotNetProject)' == 'true'">
+      <ReferenceFromRuntime Include="BenchmarkDotNet" />
+      <ReferenceFromRuntime Include="BenchmarkDotNet.Diagnostics.Windows" />
     </ItemGroup>
 
     <!-- vs debugging / test explorer -->
@@ -455,7 +452,7 @@
       <TestCommandLines Include="if exist %EXECUTION_DIR%int rmdir /S /Q %EXECUTION_DIR%int" />
       <TestCommandLines Include="if exist %EXECUTION_DIR%native rmdir /S /Q %EXECUTION_DIR%native" />
       <TestCommandLines Include="@(TargetExecutableNames -> '
-call %RUNTIME_PATH%\TestILC\ilc.exe -ExeName %(Identity) -in %EXECUTION_DIR% -out %EXECUTION_DIR%int\%(Identity)\ -usedefaultpinvoke -buildtype $(ILCBuildType) -v diag $(_UseSharedAssemblies) $(_ILCWin32)
+call %RUNTIME_PATH%\TestILC\ilc.exe -ExeName %(Identity) -in %EXECUTION_DIR% -out %EXECUTION_DIR%int\%(Identity)\ -usedefaultpinvoke:false -buildtype $(ILCBuildType) -v diag $(_UseSharedAssemblies) $(_ILCWin32)
 set ILCERRORLEVEL=%ERRORLEVEL%
 if NOT [%ILCERRORLEVEL%] == [0] exit /b %ILCERRORLEVEL%
 robocopy /S /NP %EXECUTION_DIR%int\%(Identity)\ %EXECUTION_DIR%native\
